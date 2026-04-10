@@ -1,0 +1,320 @@
+{
+	"info": {
+		"_postman_id": "hotel-api-collection-v2",
+		"name": "Hotel PFA — API complète",
+		"description": "Collection pour tester l'API Spring Boot (port 8080 par défaut).\n\n**Compte admin initial** (DataInitializer) : `admin@hotel.local` / `admin123`\n\nAprès **Login**, le script enregistre automatiquement le JWT dans la variable `jwt_token` pour les routes protégées (rôle ADMIN).\n\n**Routes publiques** : auth, GET /rooms/room-types, POST réservation, GET confirmation, DELETE réservation (selon SecurityConfig).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "room_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "booking_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "confirmation_code",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register (STAFF)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"try {",
+									"  var j = pm.response.json();",
+									"  if (j && j.token) { pm.collectionVariables.set('jwt_token', j.token); }",
+									"} catch (e) {}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"staff@example.com\",\n  \"password\": \"secret12\"\n}"
+						},
+						"url": "{{base_url}}/api/auth/register",
+						"description": "Crée un compte avec le rôle STAFF. Réponse 200 avec JWT."
+					}
+				},
+				{
+					"name": "Login (admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"try {",
+									"  var j = pm.response.json();",
+									"  if (j && j.token) { pm.collectionVariables.set('jwt_token', j.token); }",
+									"} catch (e) {}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@hotel.local\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": "{{base_url}}/api/auth/login",
+						"description": "Connexion compte ADMIN (créé au démarrage si base vide). Le JWT est copié dans `jwt_token`."
+					}
+				}
+			]
+		},
+		{
+			"name": "Rooms",
+			"item": [
+				{
+					"name": "Lister les types de chambres",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/rooms/room-types",
+						"description": "Public (GET /rooms/**)."
+					}
+				},
+				{
+					"name": "Ajouter une chambre (ADMIN)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "photo",
+									"type": "file",
+									"src": [],
+									"description": "Image (max 10MB côté serveur)"
+								},
+								{
+									"key": "roomType",
+									"value": "Suite Deluxe",
+									"type": "text"
+								},
+								{
+									"key": "roomPrice",
+									"value": "150.00",
+									"type": "text"
+								}
+							]
+						},
+						"url": "{{base_url}}/rooms/add/new-room",
+						"description": "Nécessite JWT avec rôle ADMIN (Bearer). Multipart: photo, roomType, roomPrice."
+					}
+				},
+				{
+					"name": "Lister toutes les chambres (public)",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/rooms/all-rooms",
+						"description": "GET public. Réponse JSON : id, roomType, roomPrice, isBooked, photo (base64)."
+					}
+				},
+				{
+					"name": "Détail d'une chambre (public)",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/rooms/{{room_id}}",
+						"description": "JSON : id, roomType, roomPrice, isBooked, photo (Base64), maxOccupancy (personnes max si type au catalogue)."
+					}
+				},
+				{
+					"name": "Photo d'une chambre (JPEG, public)",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/rooms/{{room_id}}/photo",
+						"description": "Image brute image/jpeg (pas de JSON). 404 si pas de photo."
+					}
+				},
+				{
+					"name": "Modifier une chambre (ADMIN)",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "photo",
+									"type": "file",
+									"src": [],
+									"description": "Optionnel — laisser vide pour garder la photo actuelle"
+								},
+								{
+									"key": "roomType",
+									"value": "Suite Deluxe",
+									"type": "text"
+								},
+								{
+									"key": "roomPrice",
+									"value": "175.00",
+									"type": "text"
+								}
+							]
+						},
+						"url": "{{base_url}}/rooms/{{room_id}}",
+						"description": "JWT ADMIN. PUT multipart/form-data : roomType, roomPrice, photo (optionnel)."
+					}
+				},
+				{
+					"name": "Supprimer une chambre (ADMIN)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": "{{base_url}}/rooms/{{room_id}}/delete",
+						"description": "JWT ADMIN. Réponse 204 No Content si succès."
+					}
+				}
+			]
+		},
+		{
+			"name": "Bookings",
+			"item": [
+				{
+					"name": "Toutes les réservations (ADMIN)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/bookings/all-bookings",
+						"description": "Réservé au rôle ADMIN."
+					}
+				},
+				{
+					"name": "Réservations par chambre (ADMIN)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/bookings/room/{{room_id}}/bookings",
+						"description": "Réservé au rôle ADMIN. Ajuster la variable `room_id`."
+					}
+				},
+				{
+					"name": "Détail par code de confirmation",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/bookings/confirmation/{{confirmation_code}}",
+						"description": "Public. Renseigner `confirmation_code` (retourné à la création)."
+					}
+				},
+				{
+					"name": "Créer une réservation",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"checkInDate\": \"2026-05-01\",\n  \"checkOutDate\": \"2026-05-05\",\n  \"guestFullName\": \"Jean Dupont\",\n  \"guestEmail\": \"jean@example.com\",\n  \"numberOfAdults\": 2,\n  \"numberOfChildren\": 0\n}"
+						},
+						"url": "{{base_url}}/bookings/room/{{room_id}}/booking",
+						"description": "Public (JSON). Champs: checkInDate, checkOutDate, guestFullName, guestEmail, numberOfAdults, numberOfChildren."
+					}
+				},
+				{
+					"name": "Annuler une réservation",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": "{{base_url}}/bookings/booking/{{booking_id}}/delete",
+						"description": "204 si OK. Config actuelle: DELETE /bookings/** en permitAll."
+					}
+				}
+			]
+		},
+		{
+			"name": "Stats",
+			"item": [
+				{
+					"name": "Dashboard (ADMIN)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/api/stats/dashboard",
+						"description": "Statistiques agrégées. Nécessite rôle ADMIN."
+					}
+				}
+			]
+		}
+	]
+}
